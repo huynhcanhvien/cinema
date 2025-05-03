@@ -1,7 +1,8 @@
 package service;
 
-import dao.ShowtimeDAO;
+import dao.*;
 import entities.Booking;
+import entities.Movie;
 import entities.Room;
 import entities.Seat;
 import entities.Showtime;
@@ -80,4 +81,32 @@ public class ShowtimeService {
     	result.put("Booked Seats", getAllBookedSeat(showtime_id));
     	return result;
     }
+
+	public List<Showtime> getShowtimeByMovieId(UUID movie_id) {
+		Movie movie = MovieDAO.findById(movie_id);
+		if(movie == null) throw new RuntimeException("Movie not found");
+
+		List<Showtime> showtimes = ShowtimeDAO.findAllByMovieId(movie_id);
+		if(showtimes == null) throw new RuntimeException("Showtime not found");
+		return showtimes;
+
+	}
+
+	public List<Showtime> getShowtimeByRoomId(Long room_id) {
+		Room room = RoomDAO.findById(room_id);
+		if(room == null) throw new RuntimeException("Room not found");
+
+		List<Showtime> showtimes = ShowtimeDAO.findAllByRoomId(room_id);
+		if(showtimes == null) throw new RuntimeException("Showtime not found");
+		return showtimes;
+	}
+	public List<Showtime> getShowtimeByDate(LocalDate date) {
+		if(date == null) throw new RuntimeException("Date not found");
+		List<Showtime> showtimes = ShowtimeDAO.findAllByDate(date);
+		if(showtimes == null) throw new RuntimeException("Showtime not found");
+		return showtimes;
+		
+	}
+	
+
 }

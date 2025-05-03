@@ -17,6 +17,7 @@ public class User {
 
     public User() {
         this.bookings = new ArrayList<>();
+        this.id = UUID.randomUUID();
     }
     
     public User(UUID id, String username, String password, String email,
@@ -34,7 +35,6 @@ public class User {
     public User(String username, String password, String email,
             String firstname, String lastname, LocalDate birthday) {
 	    this();
-	    this.id = UUID.randomUUID();
 	    this.username = username;
 	    this.password = password;
 	    this.email = email;

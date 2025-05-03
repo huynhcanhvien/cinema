@@ -8,6 +8,7 @@ import entities.Room;
 import entities.Seat;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -164,16 +165,79 @@ public class ShowtimeDAO {
         }
         return list;
     }
-    public static List<Showtime> findAllByRoomId(long room_id){
+
+    /**
+     * Find showtimes on a specific date.
+     */
+    public static List<Showtime> findAllByDate(LocalDate date) {
         List<Showtime> list = new ArrayList<>();
-        String sql = "SELECT id FROM showtimes WHERE room_id=?";
-        try {Connection conn = DbHelper.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql); 
-             stmt.setLong(1, room_id);
-             ResultSet rs = stmt.executeQuery();
-             while (rs.next()) {
-                list.add(findById(UUID.fromString(rs.getString("id"))));
-             }
+        String sql = "SELECT id FROM showtimes WHERE date_show = ?";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setDate(1, Date.valueOf(date));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(findById(UUID.fromString(rs.getString("id"))));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    /**
+     * Find showtimes on a specific date and room.
+     */
+    public static List<Showtime> findAllByRoomId(long roomId) {
+        List<Showtime> list = new ArrayList<>();
+        String sql = "SELECT id FROM showtimes WHERE room_id = ?";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setLong(1, roomId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(findById(UUID.fromString(rs.getString("id"))));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    /**
+     * Find showtimes by movie ID.
+    */
+    public static List<Showtime> findAllByMovieId(UUID movieId) {
+        List<Showtime> list = new ArrayList<>();
+        String sql = "SELECT id FROM showtimes WHERE movie_id = ?";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, movieId.toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(findById(UUID.fromString(rs.getString("id"))));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+    
+    public static List<Showtime> findByDateAndRoomId(LocalDate date, long roomId) {
+        List<Showtime> list = new ArrayList<>();
+        String sql = "SELECT id FROM showtimes WHERE date_show = ? AND room_id = ?";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setDate(1, Date.valueOf(date));
+            stmt.setLong(2, roomId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(findById(UUID.fromString(rs.getString("id"))));
+                }
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -190,6 +254,8 @@ public class ShowtimeDAO {
                 s.getId().toString()
         );
     }
+    
+    
 
     public static int delete(UUID id) {
         String sql = "DELETE FROM showtimes WHERE id = ?";

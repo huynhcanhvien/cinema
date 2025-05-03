@@ -4,10 +4,16 @@ import utils.DbHelper;
 import entities.Booking;
 import entities.Seat;
 
+import java.math.BigDecimal;
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.time.YearMonth;
+import java.util.Map;
+import java.util.LinkedHashMap;
+
 
 public class BookingDAO {
     public static int insert(Booking b) {
@@ -46,7 +52,7 @@ public class BookingDAO {
                     booking.setBookingPrice(rs.getBigDecimal("booking_price"));
                     booking.setUser_id(UUID.fromString(rs.getString("user_id")));
                     booking.setShowtime_id(UUID.fromString(rs.getString("showtime_id")));
-                    // Load seats for this booking
+                    // Load seats
                     String sqlS =
                         "SELECT s.id, s.row_num, s.col_num, s.room_id " +
                         "FROM booking_seats bs JOIN seats s ON bs.seat_id=s.id " +
@@ -100,13 +106,13 @@ public class BookingDAO {
                 b.getId().toString()
         );
         if (result > 0) {
-            // Re-insert seats: delete then insert
             DbHelper.executeUpdate("DELETE FROM booking_seats WHERE booking_id = ?", b.getId().toString());
             if (b.getSeats() != null) {
                 for (Seat seat : b.getSeats()) {
                     DbHelper.executeUpdate(
-                        "INSERT INTO booking_seats(booking_id, seat_id) VALUES(?, ?)"
-                        , b.getId().toString(), seat.getId());
+                        "INSERT INTO booking_seats(booking_id, seat_id) VALUES(?, ?)",
+                        b.getId().toString(), seat.getId()
+                    );
                 }
             }
         }
@@ -116,5 +122,124 @@ public class BookingDAO {
     public static int delete(UUID id) {
         String sql = "DELETE FROM bookings WHERE id = ?";
         return DbHelper.executeUpdate(sql, id.toString());
+    }
+
+        /**
+     * Find bookings by user ID.
+     */
+    public static List<Booking> findByUserId(UUID userId) {
+        List<Booking> list = new ArrayList<>();
+        String sql = "SELECT id FROM bookings WHERE user_id = ?";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, userId.toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(findById(UUID.fromString(rs.getString("id"))));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    /**
+     * Find bookings by date.
+     */
+    public static List<Booking> findByDate(LocalDate date) {
+        List<Booking> list = new ArrayList<>();
+        String sql = "SELECT id FROM bookings WHERE booking_date = ?";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setDate(1, Date.valueOf(date));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(findById(UUID.fromString(rs.getString("id"))));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    /**
+     * Find bookings by movie ID via join on showtimes.
+     */
+    public static List<Booking> findByMovieId(UUID movieId) {
+        List<Booking> list = new ArrayList<>();
+        String sql = "SELECT b.id FROM bookings b JOIN showtimes s ON b.showtime_id = s.id WHERE s.movie_id = ?";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, movieId.toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(findById(UUID.fromString(rs.getString("id"))));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+    
+    /**
+     * Báo cáo doanh thu theo ngày.
+     * @param date ngày cần tính doanh thu (không null)
+     * @return tổng doanh thu, >=0
+     * @throws IllegalArgumentException nếu date null
+     */
+    public static BigDecimal getRevenueByDate(LocalDate date) {
+        if (date == null) {
+            throw new IllegalArgumentException("Date must not be null");
+        }
+        String sql = "SELECT SUM(booking_price) AS rev FROM bookings WHERE booking_date = ?";
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setDate(1, Date.valueOf(date));
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    BigDecimal rev = rs.getBigDecimal("rev");
+                    return rev != null ? rev : BigDecimal.ZERO;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return BigDecimal.ZERO;
+    }
+
+
+    public static Map<LocalDate, BigDecimal> getDailyRevenueByMonth(int year, int month) {
+        if (year < 1970 || month < 1 || month > 12) {
+            throw new IllegalArgumentException("Invalid year or month");
+        }
+        String sql = "SELECT booking_date, SUM(booking_price) AS rev " +
+                     "FROM bookings " +
+                     "WHERE YEAR(booking_date)=? AND MONTH(booking_date)=? " +
+                     "GROUP BY booking_date";
+        Map<LocalDate, BigDecimal> revenueMap = new LinkedHashMap<>();
+        try (Connection conn = DbHelper.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, year);
+            stmt.setInt(2, month);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    LocalDate date = rs.getDate("booking_date").toLocalDate();
+                    BigDecimal rev = rs.getBigDecimal("rev");
+                    revenueMap.put(date, rev != null ? rev : BigDecimal.ZERO);
+                }
+            }
+            // Fill days without bookings with 0
+            YearMonth ym = YearMonth.of(year, month);
+            for (int d = 1; d <= ym.lengthOfMonth(); d++) {
+                LocalDate day = ym.atDay(d);
+                revenueMap.putIfAbsent(day, BigDecimal.ZERO);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return revenueMap;
     }
 }
