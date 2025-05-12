@@ -12,33 +12,37 @@ public class MovieServiceTest {
     	try {
             MovieService movieService = new MovieService();
 
-            // 1. Create a new movie
-            System.out.println("== Create Movie ==");
-            Movie m = new Movie(
-                "USA",
-                "English",
-                "Test Movie",
-                120,
-                "Director Name",
-                "Action",
-                18,
-                new BigDecimal("9.99"),
-                LocalDate.of(2025, 5, 1),
-                "Description",
-                "http://example.com/poster.jpg"
-            );
-            Movie created = movieService.createMovie(m);
-            System.out.println("Created: " + created);
+            // // 1. Create a new movie
+            // System.out.println("== Create Movie ==");
+            // Movie m = new Movie(
+            //     "USA",
+            //     "English",
+            //     "Test Movie",
+            //     120,
+            //     "Director Name",
+            //     "Action",
+            //     18,
+            //     new BigDecimal("9.99"),
+            //     LocalDate.of(2025, 5, 1),
+            //     "Description",
+            //     "http://example.com/poster.jpg"
+            // );
+            // Movie created = movieService.createMovie(m);
+            // System.out.println("Created: " + created);
 
             // 2. Retrieve by ID
-            System.out.println("\n== Get Movie by ID ==");
-            Movie fetched = movieService.getMovieById(created.getId());
-            System.out.println("Fetched: " + fetched);
+            // System.out.println("\n== Get Movie by ID ==");
+            // Movie fetched = movieService.getMovieById(created.getId());
+            // System.out.println("Fetched: " + fetched);
 
             // 3. List all movies
             System.out.println("\n== List All Movies ==");
             List<Movie> all = movieService.getAllMovies();
             all.forEach(System.out::println);
+            // Filter movie:
+            System.out.println("\n==List Movies by Filter==");
+            List<Movie> filtered = movieService.filterBy(null, "Comedy", "USA");
+            filtered.forEach(System.out::println);
 
 //            // 4. Update movie
 //            System.out.println("\n== Update Movie ==");

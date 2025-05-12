@@ -2,7 +2,13 @@ package service;
 
 import dao.MovieDAO;
 import entities.Movie;
+import utils.DbHelper;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,4 +36,9 @@ public class MovieService {
     public boolean deleteMovie(UUID id) {
         return MovieDAO.delete(id) > 0;
     }
+
+    public List<Movie> filterBy(String tilte, String genre, String country){
+        return MovieDAO.filterBy(tilte, genre, country);
+    }
+
 }

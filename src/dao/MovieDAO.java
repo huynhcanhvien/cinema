@@ -108,6 +108,81 @@ public class MovieDAO {
                 movie.getId().toString()
         );
     }
+    public static List<Movie> filterBy(String title, String genre, String country) {
+        List<Movie> list = new ArrayList<>();
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+    
+        try {
+            conn = DbHelper.getConnection();
+    
+            StringBuilder sql = new StringBuilder("SELECT * FROM movies WHERE 1=1");
+            List<Object> params = new ArrayList<>();
+    
+            if (title != null && !title.isEmpty()) {
+                sql.append(" AND UPPER(title) LIKE ?");
+                params.add("%" + title.toUpperCase() + "%");
+            }
+            if (genre != null && !genre.isEmpty()) {
+                sql.append(" AND UPPER(genre) LIKE ?");
+                params.add("%" + genre.toUpperCase() + "%");
+            }
+            if (country != null && !country.isEmpty()) {
+                sql.append(" AND UPPER(country) LIKE ?");
+                params.add("%" + country.toUpperCase() + "%");
+            }
+    
+            stmt = conn.prepareStatement(sql.toString());
+            for (int i = 0; i < params.size(); i++) {
+                stmt.setObject(i + 1, params.get(i));
+            }
+    
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                Movie movie = new Movie(
+                    UUID.fromString(rs.getString("id")),
+                    rs.getString("country"),
+                    rs.getString("language"),
+                    rs.getString("title"),
+                    rs.getInt("duration"),
+                    rs.getString("director_name"),
+                    rs.getString("genre"),
+                    rs.getInt("for_age"),
+                    rs.getBigDecimal("price"),
+                    rs.getDate("release_date").toLocalDate(),
+                    rs.getString("description"),
+                    rs.getString("poster_url")
+                );
+                // Load showtimes
+                String sqlS = "SELECT * FROM showtimes WHERE movie_id = ?";
+                try (PreparedStatement ps2 = conn.prepareStatement(sqlS)) {
+                    ps2.setString(1, movie.getId().toString());
+                    try (ResultSet rs2 = ps2.executeQuery()) {
+                        while (rs2.next()) {
+                            Showtime s = new Showtime();
+                            s.setId(UUID.fromString(rs2.getString("id")));
+                            s.setDateShow(rs2.getDate("date_show").toLocalDate());
+                            s.setStartTime(rs2.getTime("start_time").toLocalTime());
+                            s.setEndTime(rs2.getTime("end_time").toLocalTime());
+                            s.setMovie_id(movie.getId());
+                            s.setRoom_id(rs2.getLong("room_id"));
+                            movie.addShowtime(s);
+                        }
+                    }
+                }       
+                list.add(movie);     
+            }
+
+    
+            } catch (SQLException e) {
+                e.printStackTrace();
+            } finally {
+                DbHelper.closeQuietly(conn, stmt, rs);
+            }
+    
+            return list;
+        }
 
     public static int delete(UUID id) {
         String sql = "DELETE FROM movies WHERE id = ?";
